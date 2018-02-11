@@ -253,12 +253,10 @@
                 nearest.properties.set('iconContent', name);
                 nearest.options.set('preset', 'twirl#redStretchyIcon');
                 myMap.geoObjects.add( nearest ); //res.geoObjects.get(0));
-               /* myMap.setBounds(bounds, {
+                myMap.setBounds(bounds, {
                     // Проверяем наличие тайлов на данном масштабе.
                     checkZoomRange: true
-                });*/
-
-
+                });
                 //myMap.setCenter([55.76, 37.64] ,{duration: 200});
                 return 1;
             }else{
@@ -386,6 +384,11 @@
                 checkAnswer();
             };
         });
+        $( document ).ready(function() {
+            //если не chrome, то скрыть кнопку голосового ввода
+            if (navigator.userAgent.search(/Chrome/) <= -1) $("#btn_mic").css("display","none");
+        });
+        
 
         ymaps.ready(init);
         var myMap,
@@ -394,11 +397,12 @@
         function init(){     
             myMap = new ymaps.Map ("map", {
                 center: [55.76, 37.64],
-                zoom: 7
+                zoom: 5
             });
 
-            myPlacemark = new ymaps.Placemark([55.76, 37.64], { content: 'Москва!', balloonContent: 'Столица России' });
+            //myPlacemark = new ymaps.Placemark([55.76, 37.64], { content: 'Москва!', balloonContent: 'Столица России' });
             //myMap.geoObjects.add(myPlacemark);
+
         }
     </script>
 </body>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <title>Города. Кривошеев Евгений</title>
+    <script type="text/javascript" src="db_cities.js"> </script>
+
+    <script type="text/javascript" src="jquery-3.2.1.min.js"> </script>
+
+    <link href="https://use.fontawesome.com/releases/v5.0.2/css/all.css" rel="stylesheet">
+    <script defer src="https://use.fontawesome.com/releases/v5.0.2/js/all.js"></script>
+    
+    <script src="https://api-maps.yandex.ru/2.0-stable/?load=package.standard&lang=ru-RU" type="text/javascript"></script>
+
+    <script type="text/javascript">
+
+//Выбрал работу с загрузкой всего массива городов, чтобы его уменьшать, удаляя отвеченные города,
+//и, соответственно, ускарять поиск.
+
+        var comp_cities = [];
+        var user_cities = [];
+        var first_player = 1; //1 - user; 0 - comp;
+        var letter_comp = ""; //последня и первая буква города
+        var msg = '';
+        var myGeocoder;
+        for (var i=0; i < cities.length ; i++) { 
+            msg += i+ ": " + cities[i] + " ";
+            msg += "<br>";
+        }
+    //Проверка и добавление ответа
+        function checkAnswer() {
+            //сбрасываем инфо-поле
+            displayMsg("clear");
+            
+            var answer = "";
+            var el = document.getElementById("answer");
+            answer = $.trim( el.value.toLowerCase() );
+
+        //если пустой ответ
+            if(answer == ""){
+                displayMsg("error", "Некорректный ввод!");
+        //если ответ корректный
+            }else{
+                //проверка первой буквы
+                if(letter_comp != "" && letter_comp != answer[0]){
+                    displayMsg("error", "Неверно! Введите город на букву " + letter_comp.toUpperCase() );
+                }else{
+                    el.value = "";  //очищаем поле
+                    //циклы поиска городов 
+                    var find_city = -1; //-1 - не найдено, 0 - у компьютера, 1 - у пользователя
+                    for (var i=0; i < user_cities.length ; i++) {
+                        if(answer == user_cities[i]){
+                            find_city = 1; break;
+                        }
+                    }
+                    for (var i=0; i < comp_cities.length ; i++) {
+                        if(answer == comp_cities[i]){
+                            find_city = 0; break;
+                        }
+                    }
+                    //если город не найден в прошлых
+                    if(find_city == -1){
+
+                        myGeocoder = ymaps.geocode(answer, {kind: 'locality'});//, json: 'true'});
+                       
+                        myGeocoder.then(
+                            function (res) {
+                                //console.log(res);
+                                var set = setOnMap(answer, res);
+                                if(set == 1){//если город найден
+
+                                    user_cities.push(answer);
+                                    //удаляем город из базы
+                                    for (var i=0; i < cities.length ; i++) {
+                                        if(cities[i].toLowerCase() == answer){
+                                            //console.log(cities[i]); test = i;
+                                            cities.splice(i, 1); break;
+                                        }
+                                    }
+                                    //индекс буквы с конца слова, значение больше 0 если на конце исключенные символы
+                                    var ind_last_letter = checkLastLetter(answer);
+                                    displayAnswer("u", answer, ind_last_letter);
+                                    
+                                    var letter_user = answer[answer.length-1-ind_last_letter];
+
+                                    //Формируем ответ компьютера. Цикл по базе данных городов
+                                    var answer_comp = "";
+                                    var one_prom = 0;
+                                    for (var i=0; i < cities.length ; i++) {
+                                        //если нашли город
+                                        console.log("i:",i);
+                                        if(cities[i][0].toLowerCase() == letter_user){
+                                            answer_comp = cities[i]; console.log(answer_comp);
+                                            cities.splice(i, 1);i--;
+                                            if(one_prom == 0){
+                                                one_prom = 1;
+                                            //Ищем город на яндекс.карте
+                                            var myGeocoder = ymaps.geocode(answer_comp, {kind: 'locality', results: 1});
+                                            myGeocoder.then(
+                                                function (res) {
+
+                                                    var set = setOnMap(answer_comp, res);
+                                                    if(set == 1){//если город найден на карте
+                                                        comp_cities.push(answer_comp);
+                                                        var ind_last_letter = checkLastLetter(answer_comp);
+                                                        displayAnswer("c", answer_comp, ind_last_letter);
+                                                        letter_comp = answer_comp[answer_comp.length-1-ind_last_letter].toLowerCase();
+                                                        //break;
+                                                    }else{
+                                                        console.log("Город от компьютера не был найден на карте");
+                                                    }
+                                                },
+                                                function (err) {
+                                                    console.log("err.Неудачный поиск города от компьютера"); //displayMsg("error", "Ошибка работы ymaps.geocode(). Попробуйте еще раз.");
+                                                }
+                                            );
+                                            }
+                                        };
+                                        if(answer_comp != ""){ break;};
+                                    };
+                                    if(answer_comp == ""){
+                                        displayMsg("info", "Компьютер не нашел требуемый город! Вы победили!");
+                                        $("#answer").prop( "disabled", true );
+                                    }
+                                }else{
+                                    displayMsg("error", "Такой город не найден на карте. Введите другой.");
+                                }
+                                
+                            },
+                            function (err) {
+                                displayMsg("error", "Ошибка работы ymaps.geocode(). Попробуйте еще раз.");
+                            }
+                        );
+                    //}
+                    }else{
+                        displayMsg("error", "Такой город уже был!");
+
+                    }
+                }
+            }
+        }
+
+        //функция проверки последней буквы и следующих если требуется (исключения: Ь, Ъ, Ы, Й ) 
+        function checkLastLetter(answ) {
+            var exception = "ьъый -";
+            var correct = 0;
+            var ind_letter = 0;
+            //проходим по буквам ответа, начиная с последней
+            for (var i = answ.length-1; i >= 0 ; i--) {
+                //цикл по исключенным буквам/символам
+                for (var j = 0; j <= exception.length; j++){
+                    correct = 1;    //console.log(answ[i]); console.log(exception[j]);
+                    if(answ[i] == exception[j]){
+
+                        ind_letter++;
+                        correct = 0;
+                        break;
+                    }
+                }
+                if(correct){
+                    break;
+                }
+            }
+            //если все слово состоит из запрещенных символов, то возвращаем 0, иначе индекс
+            if(ind_letter >= answ.length){
+                return 0;
+            }else{
+                return ind_letter;
+            }
+        }
+        function displayAnswer(user, answer, ind_last_letter) {
+            //Выделяем по индексу
+            if( ind_last_letter > 0 ){
+                $("#test").append(user + ": <p>" + answer.substr(0,answer.length-1-ind_last_letter)
+                                  + "<span class = 'red'>" + answer[answer.length-1-ind_last_letter].toUpperCase() + "</span>" 
+                                  + answer.substr(answer.length-ind_last_letter,ind_last_letter+1) + "</p><br>");
+            //Выделяем последнюю
+            }else{
+                $("#test").append(user + ": <p>" + answer.substr(0,answer.length-1) + "<span class = 'red'>" 
+                                  + answer[answer.length-1].toUpperCase() + "</span> </p><br>" );
+            }
+        }
+        function displayMsg(status, msg){
+            switch (status){
+                case "error": 
+                    $("#answer").css("background-color","#ffb0b0");
+                    $("#msg").css("color","red");
+                    $("#msg").html(msg);
+                    break;
+                case "info":
+                    $("#msg").css("color","green");
+                    $("#msg").html(msg);
+                    break;
+                case "clear":
+                    $("#answer").css("background-color","#fff");
+                    $("#msg").css("color","black");
+                    $("#msg").html("");
+                    break;
+                default:
+                    $("#msg").css("color","black");
+                    $("#msg").html(msg);
+            }   
+        }
+        
+        function getSpeech(){
+            var SpeechRecognition = SpeechRecognition || webkitSpeechRecognition;
+            var SpeechGrammarList = SpeechGrammarList || webkitSpeechGrammarList;
+            var SpeechRecognitionEvent = SpeechRecognitionEvent || webkitSpeechRecognitionEvent;
+
+            var recognition = new SpeechRecognition();
+            
+            recognition.lang = 'ru-RU'; //'en-US'
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.start();
+            $("#btn_mic").css("color","red");
+            recognition.onresult = function(event) {
+                var speechResult = event.results[0][0].transcript;
+                document.getElementById("answer").value = speechResult;
+                console.log("+");
+            }
+
+            recognition.onspeechend = function() {
+                $("#btn_mic").css("color","#9b9b9b");
+                recognition.stop();
+                /*testBtn.disabled = false;
+                testBtn.textContent = 'Start new test';*/
+                console.log("end");
+            }
+
+            recognition.onerror = function(event) {
+                $("#btn_mic").css("color","#9b9b9b");
+                /*testBtn.disabled = false;
+                testBtn.textContent = 'Start new test';
+                diagnosticPara.textContent = 'Error occurred in recognition: ' + event.error;*/
+                console.log("error");
+            }
+        }
+
+        function setOnMap(answer, res){
+            console.log(res);
+            //получаем первый город
+            var nearest = res.geoObjects.get(0);
+            
+            var name = nearest.properties.get('name');//Название
+            var coords = nearest.geometry.getCoordinates();// Координаты геообъекта.
+            var bounds = nearest.properties.get('boundedBy');// Область видимости геообъекта.
+            var kind = nearest.properties.get('metaDataProperty.GeocoderMetaData.kind');//тип (city,locality,province)
+            console.log(kind);
+            //Если имя полностью совпадает
+            if(name.toLowerCase() == answer.toLowerCase() && kind != "country" ){
+                nearest.properties.set('iconContent', name);
+                nearest.options.set('preset', 'twirl#redStretchyIcon');
+                myMap.geoObjects.add( nearest ); //res.geoObjects.get(0));
+               /* myMap.setBounds(bounds, {
+                    // Проверяем наличие тайлов на данном масштабе.
+                    checkZoomRange: true
+                });*/
+
+
+                //myMap.setCenter([55.76, 37.64] ,{duration: 200});
+                return 1;
+            }else{
+                return 0;
+            }
+        }
+
+    </script>
+</head>
+<style>
+    body{
+        font-family: Roboto, sans-serif;
+    }
+    .container{
+
+        /*margin:auto;*/
+       /* margin-top:30%;
+        margin-bottom:30%;*/
+        /*text-align: center;*/
+
+    }
+    #map{
+        width: 600px;
+        height: 400px;
+        position: fixed;
+        top:20px;
+        left:50%;
+        margin-left:-300px;
+        border:1px solid black;
+    }
+    #box_answer{
+        width:400px;
+        height:100px;
+        position:   fixed;   
+        top:50%;
+        left:50%;
+        margin-top:-30px;
+        margin-left:-200px;
+        border: 1px solid black;
+    }
+    #answer{
+        /*position:   fixed;   
+        top:50%;
+        left:50%;
+        margin-top:-15px;
+        margin-left:-150px;*/
+        font-family: Roboto, sans-serif;
+        margin-top:10px;
+        margin-left:17px;
+        height:30px;
+        width:275px;
+        font-size:  15pt;
+        padding-left: 6px;
+        padding-right: 26px;
+    }
+    #btn,#btn_mic{
+        display: inline-block;
+        width: 45px;
+        height: 26px;
+        border: 1px solid black;
+        font-size: 15pt;
+        text-align: center;
+        margin-left: 8px;
+        cursor: pointer;
+        position: relative;
+        top: 1px;
+        padding-top: 7px;
+        border-radius: 5px;
+    }
+    #btn:hover{
+        background-color: #adc0ff;
+    }
+    #btn_mic{
+        color:#9b9b9b;
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        margin: 0;
+        position: absolute;
+        top: 14px;
+        right: 74px;
+        border: 0px;
+        font-size: 26px;
+    }
+    #btn_mic:hover{
+        color:#6f6f6f;
+    }
+    #msg{
+        font-family: Roboto, sans-serif;
+        margin:10px 25px;
+        
+        font-size:12pt;
+    }
+    .red{
+        color:red;
+    }
+    #test p{
+        display:inline-block;
+        margin:0;
+    }
+    #test p:first-letter {
+        text-transform: uppercase;
+        color: blue;
+    }
+
+
+
+
+</style>
+<body>
+    <div class="container">
+        <div id="test"></div>
+        <div id="map"></div>
+        <div id="box_answer">
+            <input id="answer" type="text" name="city">
+            <div id="btn_mic" onclick="getSpeech()"><i class="fas fa-microphone"></i></div>
+            <div id="btn" onclick="checkAnswer()">OK</div>
+            <div id="msg"></div>
+        <div>
+    </div>
+    <script type="text/javascript">
+        /*document.getElementById("test").innerHTML = msg;*/
+        $('#answer').keydown(function(eventObject){
+            if(eventObject.which == 13){
+                checkAnswer();
+            };
+        });
+
+        ymaps.ready(init);
+        var myMap,
+            myPlacemark;
+
+        function init(){     
+            myMap = new ymaps.Map ("map", {
+                center: [55.76, 37.64],
+                zoom: 7
+            });
+
+            myPlacemark = new ymaps.Placemark([55.76, 37.64], { content: 'Москва!', balloonContent: 'Столица России' });
+            //myMap.geoObjects.add(myPlacemark);
+        }
+    </script>
+</body>
+</html>

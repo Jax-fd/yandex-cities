@@ -120,7 +120,8 @@
                                     };
                                     if(answer_comp == ""){
                                         displayMsg("info", "Компьютер не нашел требуемый город!<br> Вы победили!");
-                                        $("#answer").prop( "disabled", true );
+                                        surrender("c");
+                                        
                                     }
                                 }else{
                                     displayMsg("error", "Такой город не найден на карте.<br> Введите другой.");
@@ -259,7 +260,7 @@
                         checkZoomRange: true
                     });*/
                     
-                    myMap.setCenter(coords , 3, {duration: 1000, checkZoomRange: true} );
+                    myMap.setCenter(coords , 3, {duration: 200, checkZoomRange: true} );
               
                     return 1;
                 }else{
@@ -268,6 +269,16 @@
             }else{
                 return 0;
             }
+        }
+
+        function surrender(status){
+            if(status == null){
+                displayMsg(null, "Вы сдались.<br> Победил компьютер.");
+            }
+            $("#btn").attr("onclick", "" );
+            $("#btn_mic").attr("onclick", "" );
+            $("#btn_surrender").attr("onclick", "" );
+            $("#answer").prop( "disabled", true );
         }
 
     </script>
@@ -324,7 +335,10 @@
         padding-right: 26px;
         background-color: #fff;
     }
-    #btn,#btn_mic{
+   /* #answer:autofill{
+        background-color: #fff;   
+    }*/
+    #btn,#btn_mic,#btn_surrender{
         display: inline-block;
         width: 45px;
         height: 26px;
@@ -337,8 +351,9 @@
         top: 1px;
         padding-top: 7px;
         border-radius: 5px;
+        background-color: #fff;
     }
-    #btn:hover{
+    #btn:hover,  #btn_surrender:hover{
         background-color: #adc0ff;
     }
     #btn_mic{
@@ -355,6 +370,17 @@
     }
     #btn_mic:hover{
         color:#6f6f6f;
+    }
+    #btn_surrender{
+        color:#7d7d7d;
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        margin: 0;
+        position: absolute;
+        top: 57px;
+        right: 16px;
+        font-size: 25px;
     }
     #msg{
         font-family: Roboto, sans-serif;
@@ -396,8 +422,9 @@
         <div id="map"></div>
         <div id="box_answer">
             <input id="answer" type="text" name="city" placeholder="Введите название города">
-            <div id="btn_mic" onclick="getSpeech()"><i class="fas fa-microphone"></i></div>
-            <div id="btn" onclick="checkAnswer()">OK</div>
+            <div id="btn_mic" onclick="getSpeech()" title="Голосовой ввод"><i class="fas fa-microphone"></i></div>
+            <div id="btn" onclick="checkAnswer()" title="Ответить">OK</div>
+            <div id="btn_surrender" onclick="surrender()" title="Сдаться"><i class="far fa-flag"></i></div>
             <div id="msg"></div>
         <div>
     </div>

@@ -88,9 +88,9 @@
                                     var one_prom = 0;
                                     for (var i=0; i < cities.length ; i++) {
                                         //если нашли город
-                                        console.log("i:",i);
+                                        //console.log("i:",i);
                                         if(cities[i][0].toLowerCase() == letter_user){
-                                            answer_comp = cities[i]; console.log(answer_comp);
+                                            answer_comp = cities[i]; //console.log(answer_comp);
                                             cities.splice(i, 1);i--;
                                             if(one_prom == 0){
                                                 one_prom = 1;
@@ -119,16 +119,16 @@
                                         if(answer_comp != ""){ break;};
                                     };
                                     if(answer_comp == ""){
-                                        displayMsg("info", "Компьютер не нашел требуемый город! Вы победили!");
+                                        displayMsg("info", "Компьютер не нашел требуемый город!<br> Вы победили!");
                                         $("#answer").prop( "disabled", true );
                                     }
                                 }else{
-                                    displayMsg("error", "Такой город не найден на карте. Введите другой.");
+                                    displayMsg("error", "Такой город не найден на карте.<br> Введите другой.");
                                 }
                                 
                             },
                             function (err) {
-                                displayMsg("error", "Ошибка работы ymaps.geocode(). Попробуйте еще раз.");
+                                displayMsg("error", "Ошибка работы ymaps.geocode().<br> Попробуйте еще раз.");
                             }
                         );
                     //}
@@ -171,14 +171,16 @@
         function displayAnswer(user, answer, ind_last_letter) {
             //Выделяем по индексу
             if( ind_last_letter > 0 ){
-                $("#test").append(user + ": <p>" + answer.substr(0,answer.length-1-ind_last_letter)
+                $("#data").append(user + ": <p>" + answer.substr(0,answer.length-1-ind_last_letter)
                                   + "<span class = 'red'>" + answer[answer.length-1-ind_last_letter].toUpperCase() + "</span>" 
                                   + answer.substr(answer.length-ind_last_letter,ind_last_letter+1) + "</p><br>");
             //Выделяем последнюю
             }else{
-                $("#test").append(user + ": <p>" + answer.substr(0,answer.length-1) + "<span class = 'red'>" 
+                $("#data").append(user + ": <p>" + answer.substr(0,answer.length-1) + "<span class = 'red'>" 
                                   + answer[answer.length-1].toUpperCase() + "</span> </p><br>" );
             }
+            var elem = document.getElementById('data');
+            elem.scrollTop = elem.scrollHeight;
         }
         function displayMsg(status, msg){
             switch (status){
@@ -218,47 +220,51 @@
             recognition.onresult = function(event) {
                 var speechResult = event.results[0][0].transcript;
                 document.getElementById("answer").value = speechResult;
-                console.log("+");
+                //console.log("+");
             }
 
             recognition.onspeechend = function() {
                 $("#btn_mic").css("color","#9b9b9b");
                 recognition.stop();
-                /*testBtn.disabled = false;
-                testBtn.textContent = 'Start new test';*/
-                console.log("end");
+                //console.log("end");
             }
 
             recognition.onerror = function(event) {
                 $("#btn_mic").css("color","#9b9b9b");
-                /*testBtn.disabled = false;
-                testBtn.textContent = 'Start new test';
-                diagnosticPara.textContent = 'Error occurred in recognition: ' + event.error;*/
-                console.log("error");
+                //console.log("error");
             }
         }
 
         function setOnMap(answer, res){
-            console.log(res);
-            //получаем первый город
-            var nearest = res.geoObjects.get(0);
+            //console.log(res);
             
-            var name = nearest.properties.get('name');//Название
-            var coords = nearest.geometry.getCoordinates();// Координаты геообъекта.
-            var bounds = nearest.properties.get('boundedBy');// Область видимости геообъекта.
-            var kind = nearest.properties.get('metaDataProperty.GeocoderMetaData.kind');//тип (city,locality,province)
-            console.log(kind);
-            //Если имя полностью совпадает
-            if(name.toLowerCase() == answer.toLowerCase() && kind != "country" ){
-                nearest.properties.set('iconContent', name);
-                nearest.options.set('preset', 'twirl#redStretchyIcon');
-                myMap.geoObjects.add( nearest ); //res.geoObjects.get(0));
-                myMap.setBounds(bounds, {
-                    // Проверяем наличие тайлов на данном масштабе.
-                    checkZoomRange: true
-                });
-                //myMap.setCenter([55.76, 37.64] ,{duration: 200});
-                return 1;
+            //получаем первый город
+            var nearest = res.geoObjects.get(0);//console.log(nearest);
+            
+            //Если не нулевой рез
+            if(nearest != null){
+                var name = nearest.properties.get('name');//Название
+                //если имя полностью совпадает, и не страна
+                if( name.toLowerCase() == answer.toLowerCase() && kind != "country" ){
+
+                    var coords = nearest.geometry.getCoordinates();// Координаты геообъекта.
+                    var bounds = nearest.properties.get('boundedBy');// Область видимости геообъекта.
+                    var kind = nearest.properties.get('metaDataProperty.GeocoderMetaData.kind');//тип (city,locality,province)
+
+                    nearest.properties.set('iconContent', name);
+                    nearest.options.set('preset', 'twirl#redStretchyIcon');
+                    myMap.geoObjects.add( nearest ); //res.geoObjects.get(0));
+                    /*myMap.setBounds(bounds, {
+                        // Проверяем наличие тайлов на данном масштабе.
+                        checkZoomRange: true
+                    });*/
+                    
+                    myMap.setCenter(coords , 3, {duration: 1000, checkZoomRange: true} );
+              
+                    return 1;
+                }else{
+                    return 0;
+                }
             }else{
                 return 0;
             }
@@ -269,9 +275,14 @@
 <style>
     body{
         font-family: Roboto, sans-serif;
+        margin:0px;
+        padding:0px;
+        background-color: #cce6ff;
     }
     .container{
-
+        margin-top:20px;
+        margin-left:20px;
+        width:230px;
         /*margin:auto;*/
        /* margin-top:30%;
         margin-bottom:30%;*/
@@ -279,23 +290,23 @@
 
     }
     #map{
-        width: 600px;
-        height: 400px;
+        width: auto;
+        height: auto;
         position: fixed;
-        top:20px;
-        left:50%;
-        margin-left:-300px;
-        border:1px solid black;
+        top: 30px;
+        bottom: 30px;
+        left: 260px;
+        right: 30px;
+        border: 1px solid black;
     }
     #box_answer{
-        width:400px;
-        height:100px;
-        position:   fixed;   
-        top:50%;
-        left:50%;
-        margin-top:-30px;
-        margin-left:-200px;
+        width: 400px;
+        height: 100px;
+        position: fixed;
+        bottom: 30px;
+        left: 260px;
         border: 1px solid black;
+        background: #f7e9b7;
     }
     #answer{
         /*position:   fixed;   
@@ -311,6 +322,7 @@
         font-size:  15pt;
         padding-left: 6px;
         padding-right: 26px;
+        background-color: #fff;
     }
     #btn,#btn_mic{
         display: inline-block;
@@ -353,11 +365,23 @@
     .red{
         color:red;
     }
-    #test p{
+    #data{
+        left: 30px;
+        width: 230px;
+        position: absolute;
+        bottom: 30px;
+        top: 30px;
+        overflow: auto;
+        background: #f7e9b7;
+        border: 1px solid black;
+        padding:20px;
+        padding-top:20px;
+    }
+    #data p{
         display:inline-block;
         margin:0;
     }
-    #test p:first-letter {
+    #data p:first-letter {
         text-transform: uppercase;
         color: blue;
     }
@@ -368,10 +392,10 @@
 </style>
 <body>
     <div class="container">
-        <div id="test"></div>
+        <div id="data"><b style="padding-left:0px">ИСТОРИЯ ИГРЫ</b><br><br></div>
         <div id="map"></div>
         <div id="box_answer">
-            <input id="answer" type="text" name="city">
+            <input id="answer" type="text" name="city" placeholder="Введите название города">
             <div id="btn_mic" onclick="getSpeech()"><i class="fas fa-microphone"></i></div>
             <div id="btn" onclick="checkAnswer()">OK</div>
             <div id="msg"></div>
@@ -396,8 +420,8 @@
 
         function init(){     
             myMap = new ymaps.Map ("map", {
-                center: [55.76, 37.64],
-                zoom: 5
+                center: [55.00, 80.00],
+                zoom: 3
             });
 
             //myPlacemark = new ymaps.Placemark([55.76, 37.64], { content: 'Москва!', balloonContent: 'Столица России' });
